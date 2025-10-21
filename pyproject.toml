@@ -13,9 +13,21 @@ requires-python = ">=3.9"
 
 # Dependencies your helpers need
 dependencies = [
-    "pandas>=2.0.0",
-    "requests>=2.31.0",
-    "google-cloud-storage>=2.16.0",
+    "google-cloud-storage",
+    "streamlit",
+    "streamlit-authenticator",
+    "streamlit_autorefresh",
+    "pandas",
+    "numpy",
+    "pyyaml",
+    "servicepytan @ git+https://github.com/AE-servco/servicepytan.git@master",
+    "google-cloud-storage",
+    "google-cloud-secret-manager",
+    "oauth2client",
+    "gspread",
+    "google-auth",
+    "supabase",
+    "uuid"
 ]
 
 # Optional: nice metadata for documentation tools
