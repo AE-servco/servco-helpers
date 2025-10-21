@@ -5,6 +5,12 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from google.cloud import secretmanager
 
+def get_last_midnight_aest_in_utc():
+    now_aest = datetime.now(ZoneInfo("Australia/Sydney"))
+    last_midnight_aest = now_aest.replace(hour=0, minute=0, second=0, microsecond=0)
+    last_midnight_utc = last_midnight_aest.astimezone(ZoneInfo("UTC"))
+    return last_midnight_utc.isoformat().replace("+00:00", "Z")
+
 def get_secret(secret_id, project_id="servco1", version_id="latest"):
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
@@ -423,9 +429,3 @@ def add_aux_data(data):
         data['conversion_rate'] = round(data['booked_converted'] / data['opportunities_booked'], 2) if data['opportunities_booked'] != 0 else 0
 
     return data
-
-def get_last_midnight_aest_in_utc():
-    now_aest = datetime.now(ZoneInfo("Australia/Sydney"))
-    last_midnight_aest = now_aest.replace(hour=0, minute=0, second=0, microsecond=0)
-    last_midnight_utc = last_midnight_aest.astimezone(ZoneInfo("UTC"))
-    return last_midnight_utc.isoformat().replace("+00:00", "Z")
