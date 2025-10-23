@@ -1,6 +1,6 @@
 from zoneinfo import ZoneInfo
 import servicepytan as sp
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, time
 from zoneinfo import ZoneInfo
 import pandas as pd
 from google.cloud import secretmanager
@@ -349,7 +349,7 @@ def build_API_call_filter(cols_wanted):
 
     return api_requests_to_call
 
-def get_new_data(state, last_endtime, cols_wanted, live=True):
+def get_new_data(state, cols_wanted, date=None):
 
     st_conn = sp.auth.servicepytan_connect(app_key=get_secret("ST_app_key_tester"), tenant_id=get_secret(f"ST_tenant_id_{state.lower()}"), client_id=get_secret(f"ST_client_id_{state.lower()}"), 
     client_secret=get_secret(f"ST_client_secret_{state.lower()}"), timezone="Australia/Sydney")
@@ -359,16 +359,18 @@ def get_new_data(state, last_endtime, cols_wanted, live=True):
     midnight_today_aest = datetime.now(ZoneInfo("Australia/Sydney")).replace(hour=0, minute=0, second=0).replace(tzinfo=None)
     now = datetime.now(ZoneInfo("Australia/Sydney")).replace(tzinfo=None)
 
-    start_datetime = last_endtime
     end_datetime = now.astimezone(ZoneInfo("UTC")).isoformat().replace("+00:00", "Z")
 
     apis_to_call = build_API_call_filter(cols_wanted)
 
     handled_data = []
 
-    if live:
+    if not date:
         start_time = midnight_today_aest
         end_time = now
+    else:
+        start_time = datetime.combine(date, time(0,0,0))
+        end_time = datetime.combine(date, time(23,59,59))
 
     # ============================== Calls ==============================
 
@@ -416,8 +418,12 @@ def get_new_data(state, last_endtime, cols_wanted, live=True):
 
     daily_call_data = collate_data(handled_data)
 
-    daily_call_data['start_time_utc'] = start_datetime
-    daily_call_data['end_time_utc'] = end_datetime
+    if 'estimated_revenue' in daily_call_data:
+        daily_call_data['estimated_revenue'] = round(daily_call_data['estimated_revenue'],2)
+    if date:
+        daily_call_data['date'] = date.strftime('%Y-%m-%d')
+    else:  
+        daily_call_data['end_time_utc'] = end_datetime
 
     output_data = {k: daily_call_data[k] for k in cols_wanted}
 
