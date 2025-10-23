@@ -137,7 +137,28 @@ def get_job_type_thresholds(job_type_response_data_ls):
     return job_type_thresholds
 
 # input = list of all calls from API
-def handle_job_data(job_response_data_ls, state, job_type_sold_thresholds=None):
+def handle_job_data(job_response_data_ls, state):
+    job_attrs = [
+        ('leadCallId', 'int'),
+        ('bookingId', 'int'),
+    ]
+
+    jobs_dtypes = convert_attr_tuples(job_attrs, 'job')
+    job_data_ls = []
+    for job in job_response_data_ls:
+        job_data_ls.append(extract_relevant_data(job, job_attrs, state))
+    jobs_df = pd.DataFrame(job_data_ls, columns=jobs_dtypes)
+
+    manual_booked = jobs_df[(jobs_df['leadCallId'] == -1) & (jobs_df['bookingId'] == -1)].shape[0]
+    
+    output = {
+        'manual_booked': manual_booked,
+    }
+
+    return output
+
+# input = list of all calls from API
+def handle_job_completed_data(job_completed_response_data_ls, state, job_type_sold_thresholds=None):
     if not job_type_sold_thresholds:
         print("Give me job_type_sold_thresholds!!!")
         return
@@ -152,12 +173,14 @@ def handle_job_data(job_response_data_ls, state, job_type_sold_thresholds=None):
 
     jobs_dtypes = convert_attr_tuples(job_attrs, 'job')
     job_data_ls = []
-    for job in job_response_data_ls:
+    for job in job_completed_response_data_ls:
         job_data_ls.append(extract_relevant_data(job, job_attrs, state))
     jobs_df = pd.DataFrame(job_data_ls, columns=jobs_dtypes)
     jobs_df['sold_thresh'] = jobs_df['jobTypeId'].apply(lambda x: job_type_sold_thresholds[x])
 
-    manual_booked = jobs_df[(jobs_df['leadCallId'] == -1) & (jobs_df['bookingId'] == -1)].shape[0]
+    completed_income_jobs = jobs_df[(jobs_df['jobStatus'] == 'Completed') & (jobs_df['total'] > 0)]
+    completed_income_jobs_size = completed_income_jobs.shape[0]
+    completed_jobs_total_income = completed_income_jobs['total'].sum() / 1.1 # total includes GST
     opportunities_booked = jobs_df[
         (jobs_df['jobStatus'] == 'Completed') &
         ((jobs_df['noCharge'] == False) | (jobs_df['total'] >= jobs_df['sold_thresh']))
@@ -166,37 +189,12 @@ def handle_job_data(job_response_data_ls, state, job_type_sold_thresholds=None):
         (jobs_df['jobStatus'] == 'Completed') &
         (jobs_df['total'] >= jobs_df['sold_thresh'])
         ].shape[0]
-    opportunity_conversion_rate = booked_converted / opportunities_booked if opportunities_booked != 0 else 0
-
-    output = {
-        'manual_booked': manual_booked,
-        'opportunities_booked': opportunities_booked,
-        'booked_converted': booked_converted,
-        'opportunity_conversion_rate': opportunity_conversion_rate
-    }
-
-    return output
-
-# input = list of all calls from API
-def handle_job_completed_data(job_completed_response_data_ls, state):
-    job_attrs = [
-        ('jobStatus', 'str'),
-        ('total', 'float'),
-    ]
-
-    jobs_dtypes = convert_attr_tuples(job_attrs, 'job')
-    job_data_ls = []
-    for job in job_completed_response_data_ls:
-        job_data_ls.append(extract_relevant_data(job, job_attrs, state))
-    jobs_df = pd.DataFrame(job_data_ls, columns=jobs_dtypes)
-
-    completed_income_jobs = jobs_df[(jobs_df['jobStatus'] == 'Completed') & (jobs_df['total'] > 0)]
-    completed_income_jobs_size = completed_income_jobs.shape[0]
-    completed_jobs_total_income = completed_income_jobs['total'].sum() / 1.1 # total includes GST
 
     output = {
         'completed_income_jobs': completed_income_jobs_size,
         'estimated_revenue': completed_jobs_total_income,
+        'opportunities_booked': opportunities_booked,
+        'booked_converted': booked_converted,
     }
 
     return output
@@ -306,18 +304,19 @@ def build_API_call_filter(cols_wanted):
         'abandoned',
         'leads_total',
         'total_booked',
+        'plumber_unavailable_calls'
     }
     jobs_created_cols = {
         'manual_booked',
-        'opportunities_booked',
-        'booked_converted',
-        'opportunity_conversion_rate',
         'leads_total',
         'total_booked',
     }
     jobs_completed_cols = {
         'completed_income_jobs',
         'estimated_revenue',
+        'opportunities_booked',
+        'booked_converted',
+        'opportunity_conversion_rate',
     }
     booking_cols = {
         'online_bookings_dismissed_lead_unachievable',
@@ -350,7 +349,7 @@ def build_API_call_filter(cols_wanted):
 
     return api_requests_to_call
 
-def get_new_data(state, last_endtime, cols_wanted):
+def get_new_data(state, last_endtime, cols_wanted, live=True):
 
     st_conn = sp.auth.servicepytan_connect(app_key=get_secret("ST_app_key_tester"), tenant_id=get_secret(f"ST_tenant_id_{state.lower()}"), client_id=get_secret(f"ST_client_id_{state.lower()}"), 
     client_secret=get_secret(f"ST_client_secret_{state.lower()}"), timezone="Australia/Sydney")
@@ -367,46 +366,50 @@ def get_new_data(state, last_endtime, cols_wanted):
 
     handled_data = []
 
+    if live:
+        start_time = midnight_today_aest
+        end_time = now
+
     # ============================== Calls ==============================
 
     if 'calls' in apis_to_call:
-        call_response_data_ls = st_data_service.get_calls_between(midnight_today_aest, now)
+        call_response_data_ls = st_data_service.get_calls_between(start_time, end_time)
         handled_data.append(handle_call_data(call_response_data_ls, state))
 
     # ============================== Jobs (Created) ==============================
 
     if 'jobs_created' in apis_to_call:
+        job_response_data_ls = st_data_service.get_jobs_created_between(start_time, end_time)
+        handled_data.append(handle_job_data(job_response_data_ls, state))
+
+    # ============================== Jobs (Completed) ==============================
+
+    if 'jobs_completed' in apis_to_call:
         job_type_data_thresholds = {}
 
         job_types = st_data_service.get_job_types()
         for entry in job_types:
             job_type_data_thresholds[entry.get('id')] = entry.get('soldThreshold')
 
-        job_response_data_ls = st_data_service.get_jobs_created_between(midnight_today_aest, now)
-        handled_data.append(handle_job_data(job_response_data_ls, state, job_type_data_thresholds))
-
-    # ============================== Jobs (Completed) ==============================
-
-    if 'jobs_completed' in apis_to_call:
-        job_completed_response_data_ls = st_data_service.get_jobs_completed_between(midnight_today_aest, now, job_status=["Completed"])
-        handled_data.append(handle_job_completed_data(job_completed_response_data_ls, state))
+        job_completed_response_data_ls = st_data_service.get_jobs_completed_between(start_time, end_time, job_status=["Completed"])
+        handled_data.append(handle_job_completed_data(job_completed_response_data_ls, state, job_type_data_thresholds))
 
     # ============================== Bookings ==============================
 
     if 'bookings' in apis_to_call:
-        booking_response_data_ls = st_data_service.get_bookings_between(midnight_today_aest, now)
+        booking_response_data_ls = st_data_service.get_bookings_between(start_time, end_time)
         handled_data.append(handle_booking_data(booking_response_data_ls, state))
 
     # ============================== Payments ==============================
 
     if 'payments' in apis_to_call:
-        payments_response_data_ls = st_data_service.get_payments_between(midnight_today_aest, now)
+        payments_response_data_ls = st_data_service.get_payments_between(start_time, end_time)
         handled_data.append(handle_payments_data(payments_response_data_ls, state))
     
     # ============================== Sold Estimates ==============================
 
     if 'sold_estimates' in apis_to_call:
-        sold_estimates_response_data_ls = st_data_service.get_sold_estimates_between(midnight_today_aest, now)
+        sold_estimates_response_data_ls = st_data_service.get_sold_estimates_between(start_time, end_time)
         handled_data.append(handle_sold_estimates_data(sold_estimates_response_data_ls, state))
 
     # ============================== Final stuff ==============================
