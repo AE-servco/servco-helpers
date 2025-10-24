@@ -431,6 +431,8 @@ def get_new_data(state, cols_wanted, date=None, st_data_service=None):
     else:  
         daily_call_data['end_time_utc'] = end_datetime
 
+    print(daily_call_data)
+
     output_data = {k: daily_call_data[k] for k in cols_wanted}
 
     return output_data
