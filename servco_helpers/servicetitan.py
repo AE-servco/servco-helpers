@@ -308,9 +308,9 @@ def build_API_call_filter(cols_wanted):
         'abandoned',
         'leads_total',
         'total_booked',
-        'plumber_unavailable_calls'
-        'outside_service_area'
-        'service_not_offered'
+        'plumber_unavailable_calls',
+        'outside_service_area',
+        'service_not_offered',
     }
     jobs_created_cols = {
         'manual_booked',
