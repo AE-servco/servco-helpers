@@ -355,12 +355,12 @@ def build_API_call_filter(cols_wanted):
 
     return api_requests_to_call
 
-def get_new_data(state, cols_wanted, date=None):
+def get_new_data(state, cols_wanted, date=None, st_data_service=None):
 
-    st_conn = sp.auth.servicepytan_connect(app_key=get_secret("ST_app_key_tester"), tenant_id=get_secret(f"ST_tenant_id_{state.lower()}"), client_id=get_secret(f"ST_client_id_{state.lower()}"), 
-    client_secret=get_secret(f"ST_client_secret_{state.lower()}"), timezone="Australia/Sydney")
-    # st_conn = sp.auth.servicepytan_connect(config_file=f"../config/servicepytan_config_{state.lower()}.json")
-    st_data_service = sp.DataService(conn=st_conn)
+    if not st_data_service:
+        st_conn = sp.auth.servicepytan_connect(app_key=get_secret("ST_app_key_tester"), tenant_id=get_secret(f"ST_tenant_id_{state.lower()}"), client_id=get_secret(f"ST_client_id_{state.lower()}"), 
+        client_secret=get_secret(f"ST_client_secret_{state.lower()}"), timezone="Australia/Sydney")
+        st_data_service = sp.DataService(conn=st_conn)
 
     midnight_today_aest = datetime.now(ZoneInfo("Australia/Sydney")).replace(hour=0, minute=0, second=0).replace(tzinfo=None)
     now = datetime.now(ZoneInfo("Australia/Sydney")).replace(tzinfo=None)
