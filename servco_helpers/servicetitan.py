@@ -113,6 +113,8 @@ def handle_call_data(call_response_data_ls, state):
     inbound_booked = calls_df[calls_df['leadCall_callType'] == 'Booked'].shape[0]
     unbooked_unachievable = calls_df[(calls_df['leadCall_callType'] == 'Unbooked') & ((calls_df['leadCall_reason_id'] != 28) & (calls_df['leadCall_reason_id'] != 29))].shape[0]
     plumber_unavailable_calls = calls_df[(calls_df['leadCall_reason_name'] == "No Plumber Availability")].shape[0]
+    outside_service_area = calls_df[(calls_df['leadCall_reason_name'] == "Outside of Service Area")].shape[0]
+    service_not_offered = calls_df[(calls_df['leadCall_reason_name'] == "Service Not Offered")].shape[0]
 
     output = {
         'total_calls': total_calls,
@@ -121,6 +123,8 @@ def handle_call_data(call_response_data_ls, state):
         'unbooked_unachievable': unbooked_unachievable,
         'abandoned': abandoned,
         'plumber_unavailable_calls': plumber_unavailable_calls,
+        'outside_service_area': outside_service_area,
+        'service_not_offered': service_not_offered,
     }
 
     return output
@@ -305,6 +309,8 @@ def build_API_call_filter(cols_wanted):
         'leads_total',
         'total_booked',
         'plumber_unavailable_calls'
+        'outside_service_area'
+        'service_not_offered'
     }
     jobs_created_cols = {
         'manual_booked',
