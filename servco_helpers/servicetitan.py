@@ -18,7 +18,7 @@ def get_secret(secret_id, project_id="servco1", version_id="latest"):
     secret_payload = response.payload.data.decode("UTF-8")
     return secret_payload
 
-def extract_relevant_data(response_data, attrs, aus_state):
+def extract_relevant_data(response_data, attrs):
     def change_and_strip_timezone(date_in, timezone="Australia/Sydney"):
         return datetime.fromisoformat(date_in).astimezone(ZoneInfo(timezone)).replace(tzinfo=None)
 
@@ -50,9 +50,7 @@ def extract_relevant_data(response_data, attrs, aus_state):
         else:
             return dtype_defaults[dtype]
 
-    output = [
-        aus_state
-        ]
+    output = []
 
     for attr in attrs:
         output.append(extract_attr(attr))
@@ -85,7 +83,7 @@ def convert_attr_tuples(attrs, data_name='', extra_cols = [('state','str')]):
     }
     return attr_dtypes
 
-def handle_call_data(call_response_data_ls, state):
+def handle_call_data(call_response_data_ls):
     call_attrs = [
         ('leadCall', 'duration', 'str'),
         ('leadCall', 'callType', 'str'),
@@ -97,7 +95,7 @@ def handle_call_data(call_response_data_ls, state):
     calls_dtypes = convert_attr_tuples(call_attrs, 'call',extra_cols=[('state','str')])
     call_data_ls = []
     for call in call_response_data_ls:
-        call_data_ls.append(extract_relevant_data(call, call_attrs, state))
+        call_data_ls.append(extract_relevant_data(call, call_attrs))
     calls_df = pd.DataFrame(call_data_ls, columns=calls_dtypes)
 
 
@@ -141,7 +139,7 @@ def get_job_type_thresholds(job_type_response_data_ls):
     return job_type_thresholds
 
 # input = list of all calls from API
-def handle_job_data(job_response_data_ls, state):
+def handle_job_data(job_response_data_ls):
     job_attrs = [
         ('leadCallId', 'int'),
         ('bookingId', 'int'),
@@ -150,7 +148,7 @@ def handle_job_data(job_response_data_ls, state):
     jobs_dtypes = convert_attr_tuples(job_attrs, 'job')
     job_data_ls = []
     for job in job_response_data_ls:
-        job_data_ls.append(extract_relevant_data(job, job_attrs, state))
+        job_data_ls.append(extract_relevant_data(job, job_attrs))
     jobs_df = pd.DataFrame(job_data_ls, columns=jobs_dtypes)
 
     manual_booked = jobs_df[(jobs_df['leadCallId'] == -1) & (jobs_df['bookingId'] == -1)].shape[0]
@@ -162,7 +160,7 @@ def handle_job_data(job_response_data_ls, state):
     return output
 
 # input = list of all calls from API
-def handle_job_completed_data(job_completed_response_data_ls, state, job_type_sold_thresholds=None):
+def handle_job_completed_data(job_completed_response_data_ls, job_type_sold_thresholds=None):
     if not job_type_sold_thresholds:
         print("Give me job_type_sold_thresholds!!!")
         return
@@ -178,7 +176,7 @@ def handle_job_completed_data(job_completed_response_data_ls, state, job_type_so
     jobs_dtypes = convert_attr_tuples(job_attrs, 'job')
     job_data_ls = []
     for job in job_completed_response_data_ls:
-        job_data_ls.append(extract_relevant_data(job, job_attrs, state))
+        job_data_ls.append(extract_relevant_data(job, job_attrs))
     jobs_df = pd.DataFrame(job_data_ls, columns=jobs_dtypes)
     jobs_df['sold_thresh'] = jobs_df['jobTypeId'].apply(lambda x: job_type_sold_thresholds[x])
 
@@ -204,7 +202,7 @@ def handle_job_completed_data(job_completed_response_data_ls, state, job_type_so
     return output
 
 # input = list of all calls from API
-def handle_payments_data(payments_response_data_ls, state):
+def handle_payments_data(payments_response_data_ls):
     payment_attrs = [
         ('total', 'str'),
     ]
@@ -212,7 +210,7 @@ def handle_payments_data(payments_response_data_ls, state):
     payment_dtypes = convert_attr_tuples(payment_attrs, 'payment')
     payment_data_ls = []
     for payment in payments_response_data_ls:
-        payment_data_ls.append(extract_relevant_data(payment, payment_attrs, state))
+        payment_data_ls.append(extract_relevant_data(payment, payment_attrs))
     payment_df = pd.DataFrame(payment_data_ls, columns=payment_dtypes)
     payment_df['total'] = payment_df['total'].astype(float)
 
@@ -227,7 +225,7 @@ def handle_payments_data(payments_response_data_ls, state):
 # Booking data handling
 
 # input = list of all calls from API
-def handle_booking_data(booking_response_data_ls, state):
+def handle_booking_data(booking_response_data_ls):
     booking_attrs = [
         ('status', 'str'),
         ('dismissingReasonId', 'int'),
@@ -238,7 +236,7 @@ def handle_booking_data(booking_response_data_ls, state):
 
     booking_data_ls = []
     for booking in booking_response_data_ls:
-        booking_data_ls.append(extract_relevant_data(booking, booking_attrs, state))
+        booking_data_ls.append(extract_relevant_data(booking, booking_attrs))
 
     bookings_df = pd.DataFrame(booking_data_ls, columns=bookings_dtypes)
 
@@ -262,7 +260,7 @@ def handle_booking_data(booking_response_data_ls, state):
 # Sold estimates data handling
 
 # input = list of all calls from API
-def handle_sold_estimates_data(sold_estimates_response_data_ls, state):
+def handle_sold_estimates_data(sold_estimates_response_data_ls):
     sold_estimates_attrs = [
         ('subtotal', 'float'),
     ]
@@ -271,7 +269,7 @@ def handle_sold_estimates_data(sold_estimates_response_data_ls, state):
 
     sold_estimates_data_ls = []
     for sold_estimate in sold_estimates_response_data_ls:
-        sold_estimates_data_ls.append(extract_relevant_data(sold_estimate, sold_estimates_attrs, state))
+        sold_estimates_data_ls.append(extract_relevant_data(sold_estimate, sold_estimates_attrs))
 
     sold_estimates_df = pd.DataFrame(sold_estimates_data_ls, columns=sold_estimates_dtypes)
 
@@ -355,11 +353,24 @@ def build_API_call_filter(cols_wanted):
 
     return api_requests_to_call
 
+def state_codes():
+    codes = {
+        'NSW_old': 'alphabravo',
+        'VIC_old': 'victortango',
+        'QLD_old': 'echozulu',
+        'NSW': 'foxtrotwhiskey',
+        'WA': 'sierradelta',
+        'QLD': 'bravogolf',
+    }
+    return codes
+
 def get_new_data(state, cols_wanted, date=None, st_data_service=None):
 
+    state_code = state_codes()[state]
+
     if not st_data_service:
-        st_conn = sp.auth.servicepytan_connect(app_key=get_secret("ST_app_key_tester"), tenant_id=get_secret(f"ST_tenant_id_{state.lower()}"), client_id=get_secret(f"ST_client_id_{state.lower()}"), 
-        client_secret=get_secret(f"ST_client_secret_{state.lower()}"), timezone="Australia/Sydney")
+        st_conn = sp.auth.servicepytan_connect(app_key=get_secret("ST_app_key_tester"), tenant_id=get_secret(f"ST_tenant_id_{state_code}"), client_id=get_secret(f"ST_client_id_{state_code}"), 
+        client_secret=get_secret(f"ST_client_secret_{state_code}"), timezone="Australia/Sydney")
         st_data_service = sp.DataService(conn=st_conn)
 
     midnight_today_aest = datetime.now(ZoneInfo("Australia/Sydney")).replace(hour=0, minute=0, second=0).replace(tzinfo=None)
@@ -382,13 +393,13 @@ def get_new_data(state, cols_wanted, date=None, st_data_service=None):
 
     if 'calls' in apis_to_call:
         call_response_data_ls = st_data_service.get_calls_between(start_time, end_time)
-        handled_data.append(handle_call_data(call_response_data_ls, state))
+        handled_data.append(handle_call_data(call_response_data_ls))
 
     # ============================== Jobs (Created) ==============================
 
     if 'jobs_created' in apis_to_call:
         job_response_data_ls = st_data_service.get_jobs_created_between(start_time, end_time)
-        handled_data.append(handle_job_data(job_response_data_ls, state))
+        handled_data.append(handle_job_data(job_response_data_ls))
 
     # ============================== Jobs (Completed) ==============================
 
@@ -400,25 +411,25 @@ def get_new_data(state, cols_wanted, date=None, st_data_service=None):
             job_type_data_thresholds[entry.get('id')] = entry.get('soldThreshold')
 
         job_completed_response_data_ls = st_data_service.get_jobs_completed_between(start_time, end_time, job_status=["Completed"])
-        handled_data.append(handle_job_completed_data(job_completed_response_data_ls, state, job_type_data_thresholds))
+        handled_data.append(handle_job_completed_data(job_completed_response_data_ls, job_type_data_thresholds))
 
     # ============================== Bookings ==============================
 
     if 'bookings' in apis_to_call:
         booking_response_data_ls = st_data_service.get_bookings_between(start_time, end_time)
-        handled_data.append(handle_booking_data(booking_response_data_ls, state))
+        handled_data.append(handle_booking_data(booking_response_data_ls))
 
     # ============================== Payments ==============================
 
     if 'payments' in apis_to_call:
         payments_response_data_ls = st_data_service.get_payments_between(start_time, end_time)
-        handled_data.append(handle_payments_data(payments_response_data_ls, state))
+        handled_data.append(handle_payments_data(payments_response_data_ls))
     
     # ============================== Sold Estimates ==============================
 
     if 'sold_estimates' in apis_to_call:
         sold_estimates_response_data_ls = st_data_service.get_sold_estimates_between(start_time, end_time)
-        handled_data.append(handle_sold_estimates_data(sold_estimates_response_data_ls, state))
+        handled_data.append(handle_sold_estimates_data(sold_estimates_response_data_ls))
 
     # ============================== Final stuff ==============================
 
