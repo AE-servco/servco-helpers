@@ -57,7 +57,7 @@ def extract_relevant_data(response_data, attrs):
 
     return output
 
-def convert_attr_tuples(attrs, data_name='', extra_cols = [('state','str')]):
+def convert_attr_tuples(attrs, data_name='', extra_cols = []):
     '''
     Converts list of attr tuples used in extract_relevant_data() to dtypes dictionary for use in pandas later. data_name is the alias for the ST data coming in (job, call, customer, etc.)
     Params:
@@ -92,7 +92,7 @@ def handle_call_data(call_response_data_ls):
         ('leadCall', 'reason', 'name', 'str'),
     ]
 
-    calls_dtypes = convert_attr_tuples(call_attrs, 'call',extra_cols=[('state','str')])
+    calls_dtypes = convert_attr_tuples(call_attrs, 'call')
     call_data_ls = []
     for call in call_response_data_ls:
         call_data_ls.append(extract_relevant_data(call, call_attrs))
