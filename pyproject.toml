@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "servco-helpers"
-version = "0.1.5"
+version = "0.1.8"
 description = "Internal helper utilities for tech projects"
 authors = [{ name = "Albie Ewins" }]
 readme = "README.md"
@@ -41,6 +41,5 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/AE-servco/servco-helpers"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["servco_helpers*"]
+[tool.setuptools]
+packages = { find = { where = ["servco_helpers"] } }

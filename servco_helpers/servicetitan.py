@@ -364,13 +364,22 @@ def state_codes():
     }
     return codes
 
-def get_new_data(state, cols_wanted, date=None, st_data_service=None):
+def get_new_data(state, cols_wanted, secrets=None, date=None, st_data_service=None):
 
     state_code = state_codes()[state]
 
     if not st_data_service:
-        st_conn = sp.auth.servicepytan_connect(app_key=get_secret("ST_app_key_tester"), tenant_id=get_secret(f"ST_tenant_id_{state_code}"), client_id=get_secret(f"ST_client_id_{state_code}"), 
-        client_secret=get_secret(f"ST_client_secret_{state_code}"), timezone="Australia/Sydney")
+        tenant_id=get_secret(f"ST_tenant_id_{state_code}")
+        if secrets:
+            app_key=secrets["app_key"]
+            client_id=secrets["client_id"]
+            client_secret=secrets["client_secret"]
+        else:
+            app_key=get_secret("ST_app_key_tester")
+            client_id=get_secret("ST_client_id_network")
+            client_secret=get_secret("ST_client_secret_network")
+
+        st_conn = sp.auth.servicepytan_connect(app_key=app_key, tenant_id=tenant_id, client_id=client_id, client_secret=client_secret, timezone="Australia/Sydney")
         st_data_service = sp.DataService(conn=st_conn)
 
     midnight_today_aest = datetime.now(ZoneInfo("Australia/Sydney")).replace(hour=0, minute=0, second=0).replace(tzinfo=None)
