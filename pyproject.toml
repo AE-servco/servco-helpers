@@ -41,5 +41,6 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/AE-servco/servco-helpers"
 
-[tool.setuptools]
-packages = { find = { where = ["servco_helpers"] } }
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["servco_helpers*"]
