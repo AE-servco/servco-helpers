@@ -361,6 +361,8 @@ def state_codes():
         'NSW': 'foxtrotwhiskey',
         'WA': 'sierradelta',
         'QLD': 'bravogolf',
+        'VIC': 'mikeecho',
+        'SA': 'romeoxray',
     }
     return codes
 
