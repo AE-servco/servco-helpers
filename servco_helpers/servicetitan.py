@@ -11,7 +11,7 @@ def get_last_midnight_aest_in_utc():
     last_midnight_utc = last_midnight_aest.astimezone(ZoneInfo("UTC"))
     return last_midnight_utc.isoformat().replace("+00:00", "Z")
 
-def get_secret(secret_id, project_id="servco1", version_id="latest"):
+def get_secret(secret_id, project_id="prestigious-gcp", version_id="latest"):
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
     response = client.access_secret_version(request={"name": name})
