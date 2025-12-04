@@ -371,15 +371,15 @@ def get_new_data(state, cols_wanted, secrets=None, date=None, st_data_service=No
     state_code = state_codes()[state]
 
     if not st_data_service:
-        tenant_id=get_secret(f"ST_tenant_id_{state_code}")
+        tenant_id=get_secret(f"st_tenant_id_{state_code}")
         if secrets:
             app_key=secrets["app_key"]
             client_id=secrets["client_id"]
             client_secret=secrets["client_secret"]
         else:
-            app_key=get_secret("ST_app_key_tester")
-            client_id=get_secret("ST_client_id_network")
-            client_secret=get_secret("ST_client_secret_network")
+            app_key=get_secret("st_app_key_tester")
+            client_id=get_secret("st_client_id_network")
+            client_secret=get_secret("st_client_secret_network")
 
         st_conn = sp.auth.servicepytan_connect(app_key=app_key, tenant_id=tenant_id, client_id=client_id, client_secret=client_secret, timezone="Australia/Sydney")
         st_data_service = sp.DataService(conn=st_conn)
