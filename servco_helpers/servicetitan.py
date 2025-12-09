@@ -274,9 +274,11 @@ def handle_sold_estimates_data(sold_estimates_response_data_ls):
     sold_estimates_df = pd.DataFrame(sold_estimates_data_ls, columns=sold_estimates_dtypes)
 
     sales = round(sold_estimates_df['subtotal'].sum(), 2)
+    num_sales = sold_estimates_df['subtotal'].count()
 
     output = {
         'sales': sales,
+        'num_of_estimates': int(num_sales)
     }
 
     return output
@@ -334,6 +336,7 @@ def build_API_call_filter(cols_wanted):
     }
     sold_estimate_cols = {
         'sales',
+        'num_of_estimates',
     }
 
     api_requests_to_call = set()
